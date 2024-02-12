@@ -1,49 +1,29 @@
 #!/usr/bin/python3
-"""Fab script that distributes an archives"""
-
-
-from datetime import datetime
-from fabric.api import *
-import os
+"""Fabric script that distributes an archive to your web servers"""
+from fabric.api import env, put, run
+from os.path import exists
 
 env.hosts = ['52.87.185.174', '34.228.162.170']
 env.user = "ubuntu"
-
-
-def do_pack():
-    """
-        that distributes an archive to web servers
-    """
-
-    local("mkdir -p versions")
-    date = datetime.now().strftime("%Y%m%d%H%M%S")
-    archived_f_path = "versions/web_static_{}.tgz".format(date)
-    t_gzip_archive = local("tar -cvzf {} web_static".format(archived_f_path))
-
-    if t_gzip_archive.succeeded:
-        return archived_f_path
-    else:
-        return None
+env.key = "~/.ssh/id_rsa"
 
 
 def do_deploy(archive_path):
-    """Archives to web-servers"""
-    if os.path.exists(archive_path):
-        archived_file = archive_path[9:]
-        newest_version = "/data/web_static/releases/" + archived_file[:-4]
-        archived_file = "/tmp/" + archived_file
+    """Function to distribute an archive to your web servers"""
+    if not exists(archive_path):
+        return False
+    try:
+        file_name = archive_path.split("/")[-1]
+        name = file_name.split(".")[0]
+        path_name = "/data/web_static/releases/" + name
         put(archive_path, "/tmp/")
-        run("sudo mkdir -p {}".format(newest_version))
-        run("sudo tar -xzf {} -C {}/".format(archived_file,
-                                             newest_version))
-        run("sudo rm {}".format(archived_file))
-        run("sudo mv {}/web_static/* {}".format(newest_version,
-                                                newest_version))
-        run("sudo rm -rf {}/web_static".format(newest_version))
-        run("sudo rm -rf /data/web_static/current")
-        run("sudo ln -s {} /data/web_static/current".format(newest_version))
-
-        print("New version deployed!")
+        run("mkdir -p {}/".format(path_name))
+        run('tar -xzf /tmp/{} -C {}/'.format(file_name, path_name))
+        run("rm /tmp/{}".format(file_name))
+        run("mv {}/web_static/* {}".format(path_name, path_name))
+        run("rm -rf {}/web_static".format(path_name))
+        run('rm -rf /data/web_static/current')
+        run('ln -s {}/ /data/web_static/current'.format(path_name))
         return True
-
-    return False
+    except Exception:
+        return False
