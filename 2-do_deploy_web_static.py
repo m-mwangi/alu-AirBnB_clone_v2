@@ -47,3 +47,18 @@ def do_deploy(archive_path):
         return True
 
     return False
+
+# Call do_pack to create the archive
+archive_path = do_pack()
+
+if archive_path:
+    # Deploy the archive to both servers
+    result_web_01 = do_deploy(archive_path)
+    result_web_02 = do_deploy(archive_path)
+
+    if result_web_01 and result_web_02:
+        print("Deployment successful on both servers.")
+    else:
+        print("Deployment failed on one or more servers.")
+else:
+    print("Archive creation failed. Deployment aborted.")
